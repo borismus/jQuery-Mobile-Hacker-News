@@ -1,0 +1,155 @@
+<!DOCTYPE html> 
+<html> 
+<head> 
+  <title>Hacker News</title> 
+  <link rel="stylesheet" href="external/jquery.mobile-1.0a2.min.css" />
+  <script src="external/jquery.min.js"></script>
+  <script src="external/jquery.mobile-1.0a2.min.js"></script>
+  <script src="external/phonegap.js"></script>
+  <script src="webintent.js"></script>
+  
+  <style>
+  /* Style listviews in item.html */
+  .ui-li-desc { white-space: normal !important; margin-top: -0.1em;}
+  /* Style iframes in submitlink.html and reply.html */
+  iframe.submitlink {width: 100%; min-height: 25em; border: none;}
+  iframe.reply {width: 100%; min-height: 100%; border: none;}
+  </style>
+</head> 
+<body> 
+
+  <div data-role="page">
+
+    <div data-role="header">
+      <a onclick="javascript:refresh();" data-theme="c" data-icon="gear">Refresh</a>
+      <h1>Hacker News</h1>
+      <a href="submitlink.html" data-theme="c" data-icon="check">Post</a>
+      
+    </div><!-- /header -->
+
+    <div data-role="content">
+      <ul data-role="listview" data-theme="c" data-counttheme="d" id="news">
+      </ul>
+    </div><!-- /content -->
+
+    <div data-role="footer">
+      <h4><a href="http://twitter.com/borismus">@borismus</a></h4>
+    </div><!-- /header -->
+  </div><!-- /page -->
+  
+<script><!--
+function getParameterByName( name ) {
+  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+  var regexS = "[\\?&]"+name+"=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var results = regex.exec( window.location.href );
+  if( results == null )
+    return "";
+  else
+    return decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+var scriptCache = {
+  cache: {},
+  
+  load: function(src) {
+    var cache = this.cache;
+    if (cache[src] != undefined) {
+      // the script has already been loaded. don't load it again!
+      return;
+    }
+    $.ajax({
+      dataType: 'script',
+      async: false,
+      cache: true,
+      url: src,
+      success: function() {
+        cache[src] = true;
+      }
+    });
+  },
+  
+  onPageLoad: function(page, callback) {
+    $('[data-role=page]').live('pageshow', function(event) {
+      if (event.target.id.indexOf(page) == 0) {
+        callback();
+      }
+    });
+  },
+
+  initialize: function() {
+
+    $('[data-role=page]').live('pageshow', function(event) {
+      var pageName = event.target.id;
+
+      // pageName might have some ? parameters tagged on. If so, remove the argument
+      var questionIndex = pageName.indexOf('?');
+      if (questionIndex != -1) {
+        pageName = pageName.substr(0, questionIndex);
+      }
+      if (pageName == '') {
+        return;
+      }
+      var jsName = pageName.replace(/\.[^\.]*$/,'') + '.js';
+      scriptCache.load(jsName);
+    });
+  }
+};
+
+
+var HN_POSTS = 'http://api.ihackernews.com/page?format=jsonp&callback=?';
+var HN_POST = 'http://api.ihackernews.com/post/{0}/?format=jsonp&callback=?';
+
+function error() {
+}
+
+$(document).ready(function() {
+	alert('ready');
+  scriptCache.initialize();
+  
+  document.addEventListener('deviceready', function() { 
+    window.plugins.webintent.getExtra(WebIntent.EXTRA_TEXT, function(url) {
+      window.plugins.webintent.getExtra(WebIntent.EXTRA_SUBJECT, function(title) {
+      	window.location.href = 'index.html#submitlink.html' +
+      		'?url=' + escape(url) + '&title=' + escape(title);
+      }, error);
+    }, error);
+      
+  }, false);
+
+  refresh();
+});
+
+function refresh() {
+  $.mobile.pageLoading();
+  $('#news').empty();
+  // on initialization, make a JSONP call to the HN API
+  $.getJSON(HN_POSTS, function(data) {
+    
+    // from each item, make an entry in the list
+    $.each(data.items, function(index, item) {
+      var url = 'item.html?id=' + item.id;
+      var title = '<h3><a href="' + url + '">' + item.title + '</a></h3>';
+      var subtitle = '<p>' + item.points + ' points by <strong>' + item.postedBy + '</strong> ' + item.postedAgo + '</p>';
+      var count = '<p class="ui-li-count">' + item.commentCount + '</p>';
+      var item = '<li>' + title + subtitle + count + '</li>';
+      $('#news').append(item);
+    });
+    
+    $('#news').listview("refresh");
+    $.mobile.pageLoading('false');
+  });
+}
+
+function share() {
+  var extras = {};
+  extras[WebIntent.EXTRA_TEXT] = 'body';
+  window.plugins.webintent.startActivity({
+    action: WebIntent.ACTION_SEND,
+    type: 'text/plain',
+    extras: extras
+  }, function() {alert('yay');}, function() {alert('noo');});
+}
+--></script>
+</body>
+</html>
